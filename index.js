@@ -5,6 +5,10 @@ const sqlite3 = require('sqlite3').verbose();
 const moment = require('moment');
 const crypto = require('crypto');
 
+// Logs de inicialização
+console.log('🚀 Iniciando Bot VIP Medusa...');
+console.log('📋 Verificando variáveis de ambiente...');
+
 // Configurações
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const GERENCIANET_CLIENT_ID = process.env.GERENCIANET_CLIENT_ID;
@@ -12,16 +16,33 @@ const GERENCIANET_CLIENT_SECRET = process.env.GERENCIANET_CLIENT_SECRET;
 const PIX_KEY = process.env.PIX_KEY;
 const VIP_GROUP_ID = process.env.VIP_GROUP_ID;
 
+// Verificar se as variáveis estão configuradas
+console.log('🔑 BOT_TOKEN:', BOT_TOKEN ? '✅ Configurado' : '❌ Não configurado');
+console.log('🔑 GERENCIANET_CLIENT_ID:', GERENCIANET_CLIENT_ID ? '✅ Configurado' : '❌ Não configurado');
+console.log('🔑 GERENCIANET_CLIENT_SECRET:', GERENCIANET_CLIENT_SECRET ? '✅ Configurado' : '❌ Não configurado');
+console.log('🔑 PIX_KEY:', PIX_KEY ? '✅ Configurado' : '❌ Não configurado');
+console.log('🔑 VIP_GROUP_ID:', VIP_GROUP_ID ? '✅ Configurado' : '❌ Não configurado');
+
+if (!BOT_TOKEN) {
+  console.error('❌ ERRO: BOT_TOKEN não configurado!');
+  process.exit(1);
+}
+
 // Inicializar bot e servidor
+console.log('🤖 Inicializando bot do Telegram...');
 const bot = new Telegraf(BOT_TOKEN);
+
+console.log('🌐 Inicializando servidor Express...');
 const app = express();
 app.use(express.json());
 
 // Banco de dados
+console.log('💾 Inicializando banco de dados...');
 const db = new sqlite3.Database('bot_vip.db');
 
 // Criar tabelas
 db.serialize(() => {
+  console.log('📊 Criando tabelas do banco de dados...');
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,
     telegram_id INTEGER UNIQUE,
@@ -30,7 +51,10 @@ db.serialize(() => {
     last_name TEXT,
     vip_expires TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+  )`, (err) => {
+    if (err) console.error('❌ Erro ao criar tabela users:', err);
+    else console.log('✅ Tabela users criada/verificada');
+  });
 
   db.run(`CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY,
@@ -39,7 +63,10 @@ db.serialize(() => {
     amount REAL,
     status TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+  )`, (err) => {
+    if (err) console.error('❌ Erro ao criar tabela payments:', err);
+    else console.log('✅ Tabela payments criada/verificada');
+  });
 });
 
 // Autenticação GerenciaNet
@@ -382,17 +409,38 @@ app.get('/health', (req, res) => {
 
 // Iniciar servidor
 const PORT = process.env.PORT || 3000;
+console.log(`🌐 Iniciando servidor na porta ${PORT}...`);
 app.listen(PORT, () => {
-  console.log(`Bot rodando na porta ${PORT}`);
+  console.log(`✅ Servidor rodando na porta ${PORT}`);
+  console.log(`🌍 URL do servidor: http://localhost:${PORT}`);
 });
 
 // Iniciar bot
+console.log('🤖 Iniciando bot do Telegram...');
 bot.launch().then(() => {
-  console.log('Bot iniciado com sucesso!');
+  console.log('✅ Bot iniciado com sucesso!');
+  console.log('🎉 Bot VIP Medusa está online!');
+  console.log('📱 Acesse: https://t.me/Viphotmedusabot');
 }).catch((error) => {
-  console.error('Erro ao iniciar bot:', error);
+  console.error('❌ Erro ao iniciar bot:', error);
+  console.error('🔍 Detalhes do erro:', error.message);
 });
 
 // Graceful shutdown
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM')); 
+process.once('SIGINT', () => {
+  console.log('🛑 Recebido SIGINT, encerrando bot...');
+  bot.stop('SIGINT');
+});
+process.once('SIGTERM', () => {
+  console.log('🛑 Recebido SIGTERM, encerrando bot...');
+  bot.stop('SIGTERM');
+});
+
+// Log de erro não capturado
+process.on('uncaughtException', (error) => {
+  console.error('❌ Erro não capturado:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Promise rejeitada não tratada:', reason);
+}); 
