@@ -72,6 +72,10 @@ db.serialize(() => {
 // Autenticação GerenciaNet
 async function getGerenciaNetToken() {
   try {
+    console.log('🔐 Iniciando autenticação GerenciaNet...');
+    console.log('🆔 Client ID:', GERENCIANET_CLIENT_ID ? '✅ Configurado' : '❌ Não configurado');
+    console.log('🔑 Client Secret:', GERENCIANET_CLIENT_SECRET ? '✅ Configurado' : '❌ Não configurado');
+
     const response = await axios.post('https://api-pix.gerencianet.com.br/oauth/token', {
       grant_type: 'client_credentials'
     }, {
@@ -83,9 +87,15 @@ async function getGerenciaNetToken() {
         'Content-Type': 'application/json'
       }
     });
+
+    console.log('✅ Token GerenciaNet obtido com sucesso');
     return response.data.access_token;
   } catch (error) {
-    console.error('Erro ao obter token GerenciaNet:', error);
+    console.error('❌ Erro ao obter token GerenciaNet:', error.message);
+    if (error.response) {
+      console.error('📋 Resposta do erro:', error.response.data);
+      console.error('🔢 Status:', error.response.status);
+    }
     return null;
   }
 }
@@ -93,10 +103,20 @@ async function getGerenciaNetToken() {
 // Criar cobrança PIX
 async function createPixCharge(amount, description) {
   try {
+    console.log('🔑 Obtendo token GerenciaNet...');
     const token = await getGerenciaNetToken();
-    if (!token) return null;
+    if (!token) {
+      console.error('❌ Não foi possível obter token GerenciaNet');
+      return null;
+    }
+    console.log('✅ Token GerenciaNet obtido');
 
-    const response = await axios.post('https://api-pix.gerencianet.com.br/v2/charge', {
+    console.log('💳 Criando cobrança PIX...');
+    console.log('💰 Valor:', amount);
+    console.log('📝 Descrição:', description);
+    console.log('🔑 Chave PIX:', PIX_KEY);
+
+    const payload = {
       calendario: {
         expiracao: 3600
       },
@@ -108,16 +128,25 @@ async function createPixCharge(amount, description) {
       },
       chave: PIX_KEY,
       solicitacaoPagador: description
-    }, {
+    };
+
+    console.log('📤 Enviando requisição para GerenciaNet...');
+    const response = await axios.post('https://api-pix.gerencianet.com.br/v2/charge', payload, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
 
+    console.log('✅ Cobrança PIX criada com sucesso');
+    console.log('📱 PIX ID:', response.data.loc.id);
     return response.data;
   } catch (error) {
-    console.error('Erro ao criar cobrança PIX:', error);
+    console.error('❌ Erro ao criar cobrança PIX:', error.message);
+    if (error.response) {
+      console.error('📋 Resposta do erro:', error.response.data);
+      console.error('🔢 Status:', error.response.status);
+    }
     return null;
   }
 }
