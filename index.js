@@ -76,17 +76,19 @@ async function getGerenciaNetToken() {
     console.log('🆔 Client ID:', GERENCIANET_CLIENT_ID ? '✅ Configurado' : '❌ Não configurado');
     console.log('🔑 Client Secret:', GERENCIANET_CLIENT_SECRET ? '✅ Configurado' : '❌ Não configurado');
 
-    const response = await axios.post('https://api-pix.gerencianet.com.br/oauth/token', {
-      grant_type: 'client_credentials'
-    }, {
-      auth: {
-        username: GERENCIANET_CLIENT_ID,
-        password: GERENCIANET_CLIENT_SECRET
-      },
-      headers: {
-        'Content-Type': 'application/json'
+    const response = await axios.post('https://api-pix.gerencianet.com.br/oauth/token', 
+      'grant_type=client_credentials', 
+      {
+        auth: {
+          username: GERENCIANET_CLIENT_ID,
+          password: GERENCIANET_CLIENT_SECRET
+        },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        timeout: 10000
       }
-    });
+    );
 
     console.log('✅ Token GerenciaNet obtido com sucesso');
     return response.data.access_token;
@@ -446,13 +448,31 @@ app.listen(PORT, () => {
 
 // Iniciar bot
 console.log('🤖 Iniciando bot do Telegram...');
-bot.launch().then(() => {
+bot.launch({
+  polling: {
+    timeout: 30,
+    limit: 100,
+    retryTimeout: 5000
+  }
+}).then(() => {
   console.log('✅ Bot iniciado com sucesso!');
   console.log('🎉 Bot VIP Medusa está online!');
   console.log('📱 Acesse: https://t.me/Viphotmedusabot');
 }).catch((error) => {
   console.error('❌ Erro ao iniciar bot:', error);
   console.error('🔍 Detalhes do erro:', error.message);
+  
+  // Se for erro de múltiplas instâncias, tenta novamente
+  if (error.message.includes('409') || error.message.includes('Conflict')) {
+    console.log('🔄 Tentando reiniciar bot em 5 segundos...');
+    setTimeout(() => {
+      bot.launch().then(() => {
+        console.log('✅ Bot reiniciado com sucesso!');
+      }).catch((retryError) => {
+        console.error('❌ Erro ao reiniciar bot:', retryError.message);
+      });
+    }, 5000);
+  }
 });
 
 // Graceful shutdown
